@@ -1,0 +1,64 @@
+key,value,question
+no,0,Q1
+yes,1,Q1
+other,0,Q2
+climate,1,Q2
+environment,2,Q2
+economic,3,Q2
+conflict,4,Q2
+political,5,Q2
+social,6,Q2
+family,7,Q2
+neutral,0,Q3
+negative,1,Q3
+positive,2,Q3
+none,0,Q4
+algal blooms,1,Q4
+infestation,2,Q4
+infectious diseases,3,Q4
+ocean acidification,4,Q4
+sea ice,5,Q4
+acid rain,6,Q4
+drought,7,Q4
+cold wave,8,Q4
+heat wave,9,Q4
+glacial,10,Q4
+wildfire,11,Q4
+air pollution,12,Q4
+biodiversity loss,13,Q4
+coastal erosion,14,Q4
+land degradation,15,Q4
+deforestation,16,Q4
+desertification,17,Q4
+water pollution,18,Q4
+diebacks,19,Q4
+permafrost loss,20,Q4
+sand mining,21,Q4
+sea level rise,22,Q4
+earthquake,23,Q4
+tsunami,24,Q4
+volcanic,25,Q4
+flood,26,Q4
+avalanche,27,Q4
+landslide,28,Q4
+downburst,29,Q4
+thunderstorm,30,Q4
+sandstorm,31,Q4
+haze,32,Q4
+storm,33,Q4
+cyclone,34,Q4
+blizzard,35,Q4
+hail,36,Q4
+snow,37,Q4
+tornado,38,Q4
+wind,39,Q4
+hurricane,40,Q4
+typhoon,41,Q4
+other,42,Q4
+other,0,Q5
+social science,1,Q5
+natural science,2,Q5
+arts and humanities,3,Q5
+multidiscipline and interdiscipline,4,Q5
+no,0,Q6
+yes,1,Q6
