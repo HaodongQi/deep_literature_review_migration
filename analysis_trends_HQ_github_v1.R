@@ -1,5 +1,25 @@
 
+# If running in RStudio, set working dir to script location (optional)
+if (requireNamespace("rstudioapi", quietly = TRUE) &&
+  rstudioapi::isAvailable()) {
+    setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+  }
+pacman::p_load(data.table, tidyverse, ggplot2)
 
+# -- recode function
+recodeFun <- function(df){
+  df <- df |> as.data.frame()
+  # for Q2
+  df <- df %>% mutate(Q2=ifelse(Q2=="", "999", Q2))
+  # FOR Q3
+  df <- df %>% mutate(Q3=ifelse(Q3=="", "999", Q3))
+  # FOR Q4
+  df <- df %>% mutate(Q4=ifelse(Q4=="", "999", Q4))
+  # %>%
+  #   mutate(Q4=lapply(Q4, function(x) if(x=="0") x="42" else x=x) ) # None=0; Other=42
+  # FOR Q5
+  df <- df %>% mutate(Q5=ifelse(Q5=="", "999", Q5) )
+}
 
 # master data
 temp <-  fread("wos_migration_master.csv", header = T) %>% 
@@ -30,10 +50,10 @@ fullTestFT <- fullTestFT %>% separate_rows(value, sep = " ") %>%
 # label questions
 fullTestFT <- fullTestFT %>% mutate(i=1) %>% 
   mutate(qLabel=case_when(
-    Question=="Q1" ~ "1. About migration & mobility?",
+    Question=="Q1" ~ "1. About migration and mobility?",
     Question=="Q2" ~ "3. What migration drivers discussed?",
     Question=="Q3" ~ "Sentiment",
-    Question=="Q4" ~ "4. What clim. & env. hazards discussed?",
+    Question=="Q4" ~ "4. What clim. and env. hazards discussed?",
     Question=="Q5" ~ "Discipline",
     Question=="Q6" ~ "2. Used quant. methods?",
     TRUE ~ Question)) %>% 
@@ -44,79 +64,143 @@ fullTestFT <- fullTestFT %>% mutate(i=1) %>%
   ))
 write.csv(fullTestFT, "fullSetInference.csv", row.names = F)
 
-# # plot trends
-# plotdf <- read.csv("fullSetInference.csv") %>% 
-#   group_by(qLabel,key,PubYear) %>% 
-#   dplyr::summarise(N.Pubs=sum(i)) 
-# plotdf <- plotdf %>% 
-#   filter(!grepl("Senti",qLabel) & !grepl("Disc",qLabel) & PubYear>=1990
-#          #& !grepl("none",key)
-#          ) 
-# labeldf <- plotdf %>% group_by(qLabel,key) %>% 
-#   dplyr::summarise(max.x=max(PubYear), max.y=max(N.Pubs))
-# 
-# ggplot(plotdf, aes(x=PubYear,y=N.Pubs, color=key)) +
-#   facet_wrap(.~qLabel, ncol=1, scale="free_y"
-#              ) +
-#   geom_line(show.legend = F, linetype="longdash",alpha=.6) +
-#   ggrepel::geom_text_repel(
-#     data=labeldf,aes(max.x, max.y, label=key, size=max.y), 
-#     show.legend = F, max.overlaps=55) +
-#   theme_bw()
-# ggsave("trends.png", width = 8, height = 8)
 
 # plot trends conditional on mig studies
 pacman::p_load(geomtextpath)
 plotdf <- read.csv("fullSetInference.csv") %>% 
-  filter(!grepl("Senti",qLabel) & !grepl("Disc",qLabel) & PubYear>=1990
+  filter(!grepl("Senti",qLabel) & !grepl("Disc",qLabel) #& PubYear>=1990
          #& !grepl("none",key) 
          ) 
-plotdf %>% filter(grepl("driver",qLabel)) %>% select(key) %>% unique()         
 
-p1 <- plotdf %>% filter(grepl("About mig", qLabel)) %>% 
+sel <- plotdf |> select(id, PubYear) |> distinct()
+temp <- plotdf %>% filter(grepl("About mig", qLabel)) %>%   
+  right_join(sel, by = c("id", "PubYear")) |> 
   group_by(qLabel,key,PubYear) %>% 
-  dplyr::summarise(N.Pubs=sum(i)) 
-labeldf <- p1 %>% group_by(qLabel,key) %>% 
-  dplyr::summarise(max.x=max(PubYear), max.y=max(N.Pubs))
-p1 <- ggplot(data=p1, 
-             aes(x=PubYear,y=N.Pubs, color=key)) +
-  facet_wrap(.~qLabel, ncol=1, scale="free_y"
-  ) +
-  # geom_line(show.legend = F, linetype="longdash",alpha=.8) +
-  # ggrepel::geom_text_repel(
-  #   data=labeldf,aes(max.x, max.y, label=key), 
-  #   show.legend = F, max.overlaps=55) +
-  # geom_text(
-  #   data=labeldf,aes(max.x, max.y, label=key), 
-  #   show.legend = F, check_overlap = T) +
-  geom_textline(aes(label=key), show.legend=F, hjust=.8, vjust=.8, alpha=.8) +
-  theme_bw()
+  dplyr::summarise(N.Labels=sum(i)) 
+temp_tab <- temp |> group_by(qLabel, key) |> 
+  dplyr::summarise(N.Labels=sum(N.Labels)) |> 
+  mutate(N.Pubs=length(unique(sel$id)))
+temp <- ggplot(data=temp, 
+             aes(x=PubYear,y=N.Labels, color=key)) +
+  facet_wrap(.~qLabel, ncol=1, scale="free_y") +
+  geom_textline(aes(label=key), show.legend=F,  alpha=.8, 
+    linewidth = 0.5, gap = TRUE, # leaves a gap under the text
+    vjust = .8, hjust=.9) +  theme_bw()
+p1 <- temp; p1_tab <- temp_tab
 
-p2 <- plotdf %>% filter(!grepl("About mig", qLabel) & is.mig==1) %>% 
+sel <- plotdf |> filter(is.mig==1) |> select(id, PubYear) |> distinct()
+temp <- plotdf %>% filter(grepl("methods", qLabel)) %>% 
+  right_join(sel, by = c("id", "PubYear")) |> 
   group_by(qLabel,key,PubYear) %>% 
-  dplyr::summarise(N.Pubs=sum(i)) 
-labeldf <- p2 %>% group_by(qLabel,key) %>% 
-  dplyr::summarise(max.x=max(PubYear), max.y=max(N.Pubs))
-p2 <- ggplot(data=p2, 
-             aes(x=PubYear,y=N.Pubs, color=key)) +
-  facet_wrap(.~qLabel, nrow=1, scale="free_y"
-  ) +
-  # geom_line(show.legend = F, linetype="longdash",alpha=.8) +
-  # ggrepel::geom_text_repel(
-  #   data=labeldf,aes(max.x, max.y, label=key, size=max.y), 
-  #   show.legend = F, max.overlaps=55) +
-  # geom_text(
-  #   data=labeldf,aes(max.x-3, max.y, label=key, size=max.y*.6), 
-  #   show.legend = F, check_overlap = T) +
-  geom_textline(aes(label=key), show.legend=F, hjust=.8, vjust=.8, alpha=.8) +
+  dplyr::summarise(N.Labels=sum(i)) 
+temp_tab <- temp |> group_by(qLabel, key) |> 
+  dplyr::summarise(N.Labels=sum(N.Labels)) |> 
+  mutate(N.Pubs=length(unique(sel$id)))
+temp <- ggplot(data=temp, 
+             aes(x=PubYear,y=N.Labels, color=key)) +
+  facet_wrap(.~qLabel, nrow=1, scale="free_y") +
+  geom_textline(aes(label=key), show.legend=F,  alpha=.8, 
+    linewidth = 0.5, gap = TRUE, # leaves a gap under the text
+    vjust = .8, hjust=.9) +  theme_bw()
+p2 <- temp; p2_tab <- temp_tab
+
+sel <- plotdf |> filter(is.mig==1) |> select(id, PubYear) |> distinct()
+temp <- plotdf %>% filter(grepl("driver", qLabel, ignore.case=T)) %>% 
+  right_join(sel, by = c("id", "PubYear")) |> 
+  group_by(qLabel,key,PubYear) %>% 
+  dplyr::summarise(N.Labels=sum(i)) 
+temp_lab <- temp |> group_by(key) |> filter(PubYear==max(PubYear))
+temp_tab <- temp |> group_by(qLabel, key) |> 
+  dplyr::summarise(N.Labels=sum(N.Labels)) |> 
+  mutate(N.Pubs=length(unique(sel$id)))
+temp <- ggplot(data=temp, 
+             aes(x=PubYear,y=N.Labels, color=key)) +
+  facet_wrap(.~qLabel, nrow=1, scale="free_y") +
+  geom_line(aes(color=key), show.legend = F) +
+  ggrepel::geom_text_repel( data = temp_lab,aes(label=key), show.legend=F) +
   theme_bw()
+p3 <- temp; p3_tab <- temp_tab
+
+sel <- plotdf |> filter(grepl("drivers",qLabel)  & grepl("env.", key) & is.mig==1) |> 
+  select(id, PubYear) |> distinct()
+temp <- plotdf |> filter(grepl("hazard", qLabel) ) %>% 
+  right_join(sel, by = c("id", "PubYear")) |> 
+  group_by(qLabel,key,PubYear) %>% 
+  dplyr::summarise(N.Labels=sum(i)) 
+temp_lab <- temp |> group_by(key) |> filter(PubYear==max(PubYear))
+temp_tab <- temp |> group_by(qLabel, key) |> 
+  dplyr::summarise(N.Labels=sum(N.Labels)) |> 
+  mutate(N.Pubs=length(unique(sel$id)))
+temp <- ggplot(data=temp, 
+             aes(x=PubYear,y=N.Labels, color=key)) +
+  facet_wrap(.~qLabel, nrow=1, scale="free_y") +
+  geom_line(aes(color=key), show.legend = F) +
+  ggrepel::geom_text_repel( data = temp_lab,aes(label=key), show.legend=F) +
+  theme_bw()
+p4 <- temp; p4_tab <- temp_tab
 
 pacman::p_load(cowplot)
-plot_grid(p1, p2, ncol = 1, rel_heights = c(2,3), labels = c("a", "b"))
-ggsave("trends.png", width = 9, height = 9)
+plot_grid(p1, p2, p3, p4, ncol = 2, labels = c("a", "b", "c", "d"))
+ggsave("trends.png", width = 10, height = 8)
 
+# -- tab n labels
+temp <- rbind(p1_tab,p2_tab,p3_tab,p4_tab) |> 
+  dplyr::rename(Questions=qLabel, Labels=key)
 
-#-- heatmaps
+pacman::p_load(knitr)
+
+# 1) Build the multirow cells (as in your pipeline), and ensure groups are contiguous
+temp_grouped <- temp %>%
+  arrange(Questions, N.Pubs, N.Labels) %>%   # keep groups together
+  group_by(Questions, N.Pubs) %>%
+  mutate(
+    n_rows = n(),
+    Questions_cell = ifelse(
+      dplyr::row_number() == 1,
+      sprintf("\\multirow{%d}{*}{%s}", n_rows, Questions),
+      ""
+    ),
+    N.Pubs_cell = ifelse(
+      dplyr::row_number() == 1,
+      sprintf("\\multirow{%d}{*}{%d}", n_rows, N.Pubs),
+      ""
+    )
+  ) %>%
+  ungroup()
+
+# 2) Prepare the data frame to print
+temp_out <- temp_grouped %>%
+  select(
+    Questions = Questions_cell,
+    Labels,
+    N.Labels,
+    N.Pubs = N.Pubs_cell
+  )
+
+# 3) Build a linesep vector that inserts \midrule **after** each group
+#    We use the original (non-_cell) columns to detect group ends.
+group_ends <- temp_grouped %>%
+  group_by(Questions, N.Pubs) %>%
+  mutate(is_last_in_group = row_number() == n()) %>%
+  ungroup() %>%
+  pull(is_last_in_group)
+
+# linesep must be a character vector of length nrow(temp_out)
+# Put a \midrule after the last row of each group, otherwise nothing.
+linesep_vec <- ifelse(group_ends, "\\midrule", "")
+
+# 4) Print LaTeX table: no addlinespace, \midrule between questions
+kable(
+  temp_out,
+  format = "latex",
+  booktabs = TRUE,
+  escape = FALSE,  # allow \multirow to pass through
+  col.names = c("Questions", "Labels", "N.Labels", "N.Pubs"),
+  align = c("l","l","r","r"),
+  linesep = linesep_vec
+)
+
+#--- heatmaps
 # Load necessary libraries
 pacman::p_load(viridis,pheatmap,grid,RColorBrewer)
 
@@ -129,13 +213,13 @@ migration_drivers <- df %>%
   select(id, PubYear)
 
 hazards_data <- df %>%
-  filter(grepl("clim. & env. hazards ",qLabel)) %>%
+  filter(grepl("clim",qLabel)) %>%
   select(id, PubYear, key, i)
 
 # Merge migration drivers with hazards
 hazards_data <- hazards_data %>%
-  inner_join(migration_drivers, by = c("id", "PubYear")) %>%
-  filter(PubYear >= 1990 & key != "none")
+  right_join(migration_drivers, by = c("id", "PubYear")) %>%
+  filter(key != "none") 
 
 # Hazard categories
 hazards_data <- hazards_data %>%
@@ -173,6 +257,15 @@ hazards_data <- hazards_data %>% distinct()
 plotdf_hazards <- hazards_data %>%
   group_by(PubYear, key) %>%
   summarise(N.Pubs = sum(i, na.rm = TRUE), .groups = 'drop') %>%
+# Find global min/max once
+  mutate(.min_year = min(PubYear), .max_year = max(PubYear)) %>%
+  complete(
+    key,
+    PubYear = seq(min(.min_year), max(.max_year)),
+    fill = list(N.Pubs = 0)
+  ) %>%
+  select(-.min_year, -.max_year) %>%
+  arrange(key, PubYear) |> 
   pivot_wider(names_from = PubYear, values_from = N.Pubs, values_fill = 0) %>%
   column_to_rownames("key")
 
@@ -198,13 +291,12 @@ pheatmap(
 dev.off()
 
 
-# network analysis of hazard
+# --- network analysis of hazard
 library(pacman)
 pacman::p_load(dplyr, tidyverse, ggplot2, igraph, ggraph, tidygraph, patchwork)
 
-filtered_data <- merged_data %>%
-  filter(!key %in% c("none")) %>%
-  filter(PubYear >= 1990)
+filtered_data <- hazards_data %>%
+  filter(!key %in% c("none")) 
 
 years <- sort(unique(filtered_data$PubYear))
 all_hazards <- sort(unique(filtered_data$key))
@@ -294,16 +386,18 @@ create_network_plot <- function(year_data, title_label, layout_fixed) {
 }
 
 # 5 years grouping
-group_breaks <- seq(min(years), max(years), by = 5)
+group_breaks <- c(1980, seq(1995, 2025, by = 5))
 plot_list <- list()
 
 for (i in seq_along(group_breaks)) {
   start_year <- group_breaks[i]
-  end_year <- min(start_year + 4, max(years))  
-  group_label <- paste0(start_year, "-", end_year)
+  end_year <- min(group_breaks[i+1]-1, max(years), na.rm=T)  
   
   group_data <- filtered_data %>%
     filter(PubYear >= start_year, PubYear <= end_year)
+
+  n_pub <- length(unique(group_data$id))
+  group_label <- paste0(start_year, "-", end_year, " (N_Pubs=", n_pub, ")")
   
   p <- create_network_plot(group_data, group_label, layout_fixed)
   if (!is.null(p)) {
@@ -331,7 +425,8 @@ p_total <- ggraph(tg_total, layout = "manual", x = layout_fixed$x, y = layout_fi
     plot.background = element_rect(fill = NA, color = NA),
     plot.title = element_text(size = 11, hjust = 0.5),
     plot.margin = margin(1, 2, 1, 2) ) +
-  labs(title = "All Years")
+  labs(title = paste0(
+    "All Years", " (N_Pubs=",length(unique(full_hazards_by_doc$id)),")"))
 
 # combine all plots
 plot_list[["All Years"]] <- p_total

@@ -1,7 +1,10 @@
 
-setwd("")
+# If running in RStudio, set working dir to script location (optional)
+if (requireNamespace("rstudioapi", quietly = TRUE) &&
+  rstudioapi::isAvailable()) {
+    setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+  }
 
-library(pacman)
 pacman::p_load(data.table, ggplot2, tidyverse)
 
 ####################################################################
@@ -525,7 +528,7 @@ spl100 <- output
 #       linetype = "Set")
 # ggsave("temp.png", width = 6, height = 6)
 
-plotdf <- rbind(spl50,spl80, spl95, spl100,base) 
+plotdf <- rbind(spl50,spl80, spl95, base) # spl100,
 write.csv(plotdf, "ftAccuracy.csv", row.names = F)
 
 plotdf <- read.csv("ftAccuracy.csv") %>% 
@@ -548,17 +551,44 @@ ggplot(plotdf |> filter(Split<=1), aes(x=TrainN,y=value*100), alpha=.6) +
   geom_point(aes(color=set), size=2.8, shape=1) +
   labs(x="Training size N", y="Accuracy in %",
        linetype = "Set") +
-  geom_point(data=plotdf |> filter(Split>1),
-             aes(x=TrainN,y=value*100, color=set),
-             shape=9, size=3.8, show.legend=F) +
-  ggrepel::geom_text_repel(data=plotdf |> filter(Split>1),
-                           aes(x=TrainN,y=value*100, color=set),
-                           label="Init. Label", size=2.8, show.legend=F) +
-  geom_text(aes(x=min(plotdf$TrainN)*1.15, y=min(plotdf$value*100)*1.02,
-                label=paste0("Metric: ",Metric) ), 
-            size=3) +
+  geom_hline(
+    data=plotdf |> filter(Split>1),
+    aes(yintercept = value*100), color="grey50", linetype="dashed"
+  ) +
+  ggrepel::geom_text_repel(
+    data=plotdf |> filter(Split>1),
+    aes(x=TrainN,y=value*100), color="grey50", 
+    label="Initial Label", size=3.8, show.legend=F, direction = "y") +
+  geom_text(
+    aes(x=min(plotdf$TrainN)*1.1, y=max(plotdf$value*100)*1,
+    label=paste0("Metric: ",Metric) ), 
+    size=3.8) +
   theme_bw()
 
-ggsave("metric.png", width = 8, height = 8)
+ggsave("metric.png", width = 8, height = 6)
+
+export_tab <- plotdf |> filter(Split<=1) |> ungroup() |> select(value, Metric, set, TrainN, qLabel) |> 
+  mutate(value=paste0(round(value*100), "%"))
+export_tab <- export_tab |> pivot_wider(
+  id_cols    = c(qLabel, set, Metric),
+  names_from = TrainN,
+  names_prefix = "N=",
+  values_from = value,
+  names_sort = TRUE
+)
+
+temp <- plotdf |> filter(Split>1) |> ungroup() |> select(value, qLabel, set, Metric) |> 
+  mutate(value=paste0(round(value*100), "%")) |> 
+  dplyr::rename(Init.Label=value)
+export_tab <- export_tab |> left_join(temp) |> arrange(qLabel) |> 
+  mutate(across(everything(), ~ ifelse(is.na(.x), "--", .x)))
+
+pacman::p_load(knitr)
+kable(
+  export_tab,
+  format = "latex",
+  booktabs = TRUE,
+  escape = TRUE
+)
 
 
