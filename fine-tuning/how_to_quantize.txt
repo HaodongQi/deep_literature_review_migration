@@ -1,0 +1,63 @@
+
+# adjust the PATHS
+
+# to quantize llama-3.2-3B
+module load nvhpc/23.7-fasrc01
+#module load cuda/12.2.0-fasrc01 
+module load cuda/12.4.1-fasrc01 # for llama.cpp
+module load gcc/12.2.0-fasrc01
+conda activate jago
+
+# f16 quantization of merged model
+../llama.cpp/convert_hf_to_gguf.py  \
+              Llama-32-3B-climate-fasrc \
+    --outfile ../gguf/llama32-3B-climate-fasrc-f16.gguf \
+    --outtype f16
+
+# 4bit quantization
+../llama.cpp/build/bin/llama-quantize \
+    ../gguf/llama32-3B-climate-fasrc-f16.gguf \
+    ../gguf/llama32-3B-climate-fasrc-Q4_K_M.gguf  \
+    Q4_K_M  
+
+#80%
+
+# f16 quantization of merged model
+../llama.cpp/convert_hf_to_gguf.py  \
+              Llama-32-3B-80-climate-fasrc \
+    --outfile ../gguf/llama32-3B-80-climate-fasrc-f16.gguf \
+    --outtype f16
+
+# 4bit quantization
+../llama.cpp/build/bin/llama-quantize \
+    ../gguf/llama32-3B-80-climate-fasrc-f16.gguf \
+    ../gguf/llama32-3B-80-climate-fasrc-Q4_K_M.gguf  \
+    Q4_K_M  
+
+
+# 95%
+# f16 quantization of merged model
+../llama.cpp/convert_hf_to_gguf.py  \
+              Llama-32-3B-95-climate-fasrc \
+    --outfile ../gguf/llama32-3B-95-climate-fasrc-f16.gguf \
+    --outtype f16
+
+# 4bit quantization
+../llama.cpp/build/bin/llama-quantize \
+    ../gguf/llama32-3B-95-climate-fasrc-f16.gguf \
+    ../gguf/llama32-3B-95-climate-fasrc-Q4_K_M.gguf  \
+    Q4_K_M  
+
+#100%
+
+# f16 quantization of merged model
+../llama.cpp/convert_hf_to_gguf.py  \
+              Llama-32-3B-100-climate-fasrc \
+    --outfile ../gguf/llama32-3B-100-climate-fasrc-f16.gguf \
+    --outtype f16
+
+# 4bit quantization
+../llama.cpp/build/bin/llama-quantize \
+    ../gguf/llama32-3B-100-climate-fasrc-f16.gguf \
+    ../gguf/llama32-3B-100-climate-fasrc-Q4_K_M.gguf  \
+    Q4_K_M  
